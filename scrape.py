@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 def scraper(url):
     try:
         # Configure WebDriver to use headless Firefox
-        options = Options() #webdriver.FirefoxOptions()
+        options = Options()
         options.add_argument('-headless')
         driver = webdriver.Firefox(options=options)
 
