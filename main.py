@@ -2,12 +2,14 @@
 
 # import the modules to support the scraping process
 import json
-from scrape import scrape_tokopedia
+from scrape import scraper
 
-if __name__ == "__main__":
-    search_query = "iphone"
-    data = scrape_tokopedia(search_query)
-    
+if __name__ == '__main__':
+    # Define the URL
+    url = 'https://www.dicoding.com/academies/list'
+
+    data = scraper(url)
+
     # Save data to JSON file
-    with open('tokopedia_data.json', 'w') as json_file:
+    with open('dicoding_data.json', 'w') as json_file:
         json.dump(data, json_file, indent=4)

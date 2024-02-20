@@ -5,96 +5,84 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.firefox.options import Options
 from bs4 import BeautifulSoup
 
-# Function to scrape data from Tokopedia
-def scrape_tokopedia(search_query):
-    # Define the URL based on search query
-    url = f"https://www.tokopedia.com/search?st=&q={search_query}"
-
-    # Configure WebDriver to use Firefox
-    driver = webdriver.Firefox()
-
-    # Open the URL
+# Function to scrape data from Dicoding
+def scraper(url):
     try:
+        # Configure WebDriver to use headless Firefox
+        options = Options() #webdriver.FirefoxOptions()
+        options.add_argument('-headless')
+        driver = webdriver.Firefox(options=options)
+
+        # Get the URL given
         driver.get(url)
-    except:
-        print("Can't access the URL")
 
-    # Wait for the page to load the website
-    driver.implicitly_wait(10)
-
-    # Prepare the variable for JSON data
-    products = []
-
-    # Selenium will wait for a maximum of 3 seconds for an element matching the given criteria to be found. 
-    # If no element is found in that time, Selenium will print to the console.
-    try: 
-        element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'zeus-root')))
-    except:
-        print("There is no element specified")
-
-    # BeautifulSoup will parse the URL
-    content = driver.page_source
-    soup = BeautifulSoup(content, 'html.parser')
-
-    # BeautifulSoup will find the CSS class that contain product container
-    for product in soup.find_all('div', class_='css-uwyh54'):
-
-        # First, let's find the CSS class for product name and get the text
-        product_name = product.find('div', class_='prd_link-product-name css-3um8ox').text
-        
-        # Not all product has rating, so we should manage it. 
-        # If it has rating, get the text. If none, set it to empty string.
+        # Selenium will wait for a maximum of 5 seconds for an element matching the given criteria to be found. 
+        # If no element is found in that time, Selenium will raise an error.
         try:
-            product_rating = product.find('span', class_='prd_rating-average-text css-t70v7i').text
+            wait = WebDriverWait(driver, timeout=5)
+            wait.until(EC.presence_of_element_located((By.ID, 'course-list')))
         except:
-            product_rating = ''
+            raise LookupError("There is no element specified")
 
-        # Not all product in the list has store name, so we should manage it. 
-        # If it has store name, get the text. If none, set it to empty string.
-        try:
-            store_name = product.find('span', class_='prd_link-shop-name css-1kdc32b flip').text
-        except:
-            store_name = ''
+        # BeautifulSoup will parse the URL
+        content = driver.page_source
+        soup = BeautifulSoup(content, 'html.parser')
 
-        # Not all product in the list has store location, so we should manage it. 
-        # If it has store location, get the text. If none, set it to empty string.
-        try:
-            store_location = product.find('span', class_='prd_link-shop-loc css-1kdc32b flip').text
-        except:
-            store_location = ''
-        
-        # Not all product in the list has product sold, so we should manage it. 
-        # If it has product sold, get the text. If none, set it to empty string.
-        try:
-            product_sold = product.find('span', class_='prd_label-integrity css-1sgek4h').text
-        except:
-            product_sold = ''
+        # Prepare the variable for JSON data
+        courses = []
 
-        # Not all product in the list has product discount, so we should manage it. 
-        # If it has product discount, get the text. If none, set it to empty string.
-        try:
-            product_discount = product.find('div', class_='prd_badge-product-discount css-1xelcdh').text
-        except:
-            product_discount = ''
+        # BeautifulSoup will find the CSS class that contain product container
+        for course in soup.find_all('div', class_='col-md-6 mb-3'):
+            
+            # Get the text from the specified element and assign them to the variables
+            course_name = course.find('h5', class_='course-card__name').text
+            course_hour = course.find_all('span', {'class':'mr-2'})[0].text
+            course_summary = course.select('div.course-card__summary p')[0].text
+            course_total_module = course.find_all('div', class_= 'course-card__info-item')[0].find_all('span')[0].contents[0]
+            course_level = course.find('span', attrs={'class': None}).text
+            
+            # Not all courses in the list has rating, so we should manage it. 
+            # If it has rating, get the text. If none, set it to empty string.
+            try:
+                course_rating = course.find_all('span', {'class':'mr-2'})[1].text
+            except IndexError:
+                # Handle the case when no span elements with the specified class are found
+                course_rating = ''
 
-        # Retrieve the src attribute in the img tag
-        product_image = product.find('img', class_='css-1q90pod').get('src')
+            # Not all courses in the list has total students, so we should manage it. 
+            # If it has total students, get the text. If none, set it to empty string.
+            try:
+                course_total_students = course.find_all('span', {'class':'mr-3'})[1].get_text()
+            except:
+                course_total_students = ''
 
-        products.append(
-            {
-                'Product Name': product_name,
-                'Rating': product_rating,
-                'Store Name': store_name,
-                'Store Location': store_location,
-                'Sold': product_sold,
-                'Discount': product_discount,
-                'Image': product_image
-            }
-        )
+            # Append the scraped data into courses variable for JSON data
+            courses.append(
+                {
+                    'Course Name': course_name,
+                    'Learning Hour': course_hour,
+                    'Rating': course_rating,
+                    'Level': course_level,
+                    'Summary': course_summary,
+                    'Total Modules': course_total_module,
+                    'Total Students': course_total_students
+                }
+            )
 
-    # Close the WebDriver
-    driver.quit()
+        # Close the WebDriver
+        driver.quit()
 
-    return products
+        return courses
+
+    except Exception as e:
+        # Print the error message
+        print('An error occurred: ', e)
+
+        # Close the WebDriver
+        driver.quit()
+
+
+    
